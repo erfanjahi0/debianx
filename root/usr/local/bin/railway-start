@@ -1,0 +1,130 @@
+#!/bin/sh
+set -eu
+
+# Railway provides PORT dynamically. LinuxServer/KasmVNC uses CUSTOM_PORT.
+export CUSTOM_PORT="${PORT:-${CUSTOM_PORT:-8080}}"
+export CUSTOM_HTTPS_PORT="${CUSTOM_HTTPS_PORT:-3001}"
+export CUSTOM_USER="${CUSTOM_USER:-admin}"
+export PASSWORD="${PASSWORD:-123456}"
+export TITLE="${TITLE:-Railway KasmVNC Smooth Browser}"
+export FM_HOME="${FM_HOME:-/config}"
+export START_DOCKER="${START_DOCKER:-false}"
+export PUID="${PUID:-1000}"
+export PGID="${PGID:-1000}"
+export SMOOTH_MODE="${SMOOTH_MODE:-true}"
+export START_FIREFOX="${START_FIREFOX:-true}"
+export WALLPAPER_FILE="${WALLPAPER_FILE:-/defaults/assets/wallpaper.png}"
+
+# Smooth-mode browser/display environment.
+export MOZ_DISABLE_GPU="${MOZ_DISABLE_GPU:-1}"
+export MOZ_WEBRENDER="${MOZ_WEBRENDER:-0}"
+export GDK_BACKEND="${GDK_BACKEND:-x11}"
+export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
+export NO_AT_BRIDGE=1
+
+# Prepare home before LinuxServer init drops to UID/GID 1000.
+mkdir -p \
+  /config/Desktop \
+  /config/Downloads \
+  /config/Documents \
+  /config/.config/openbox \
+  /config/.config/pcmanfm/LXDE \
+  /config/.mozilla/firefox/railway-profile \
+  /config/.cache \
+  /config/.local/share
+
+# Own the main home so Firefox/downloads can write safely.
+chown -R "${PUID}:${PGID}" /config 2>/dev/null || true
+chmod -R u+rwX /config 2>/dev/null || true
+
+# Optional GitHub-controlled wallpaper.
+# If root/defaults/assets/wallpaper.png exists in the repo, it is applied.
+# If it does not exist, the desktop keeps the lightweight default background.
+if [ -f "$WALLPAPER_FILE" ]; then
+  cp "$WALLPAPER_FILE" /config/.railway-wallpaper.png 2>/dev/null || true
+  chown "${PUID}:${PGID}" /config/.railway-wallpaper.png 2>/dev/null || true
+  chmod 0444 /config/.railway-wallpaper.png 2>/dev/null || true
+
+  cat > /config/.config/pcmanfm/LXDE/desktop-items-0.conf <<'PCMANFM'
+[*]
+wallpaper_mode=stretch
+wallpaper=/config/.railway-wallpaper.png
+desktop_bg=#0e1117
+desktop_fg=#e6eef6
+desktop_shadow=#000000
+show_wm_menu=1
+sort=mtime;ascending;
+show_documents=0
+show_trash=0
+show_mounts=0
+PCMANFM
+  echo "Custom wallpaper enabled: $WALLPAPER_FILE"
+else
+  rm -f /config/.railway-wallpaper.png 2>/dev/null || true
+  cat > /config/.config/pcmanfm/LXDE/desktop-items-0.conf <<'PCMANFM'
+[*]
+wallpaper_mode=color
+desktop_bg=#000000
+desktop_fg=#e6eef6
+desktop_shadow=#000000
+show_wm_menu=1
+sort=mtime;ascending;
+show_documents=0
+show_trash=0
+show_mounts=0
+PCMANFM
+  echo "Custom wallpaper disabled: using default desktop background"
+fi
+
+# The desktop config is made read-only so the visual setup is controlled by GitHub redeploys.
+chown root:root /config/.config/pcmanfm/LXDE/desktop-items-0.conf 2>/dev/null || true
+chmod 0444 /config/.config/pcmanfm/LXDE/desktop-items-0.conf 2>/dev/null || true
+
+# Firefox low-overhead profile. This keeps smoothness over visual quality.
+cat > /config/.mozilla/firefox/railway-profile/user.js <<'FFPREFS'
+user_pref("browser.tabs.animate", false);
+user_pref("toolkit.cosmeticAnimations.enabled", false);
+user_pref("ui.prefersReducedMotion", 1);
+user_pref("full-screen-api.transition-duration.enter", "0 0");
+user_pref("full-screen-api.transition-duration.leave", "0 0");
+user_pref("gfx.webrender.all", false);
+user_pref("gfx.webrender.enabled", false);
+user_pref("layers.acceleration.disabled", true);
+user_pref("media.hardware-video-decoding.enabled", false);
+user_pref("browser.sessionstore.interval", 60000);
+user_pref("browser.sessionstore.resume_from_crash", false);
+user_pref("browser.cache.disk.enable", true);
+user_pref("browser.cache.memory.enable", true);
+user_pref("network.prefetch-next", false);
+user_pref("network.dns.disablePrefetch", true);
+user_pref("network.predictor.enabled", false);
+user_pref("datareporting.healthreport.uploadEnabled", false);
+user_pref("datareporting.policy.dataSubmissionEnabled", false);
+user_pref("toolkit.telemetry.enabled", false);
+user_pref("toolkit.telemetry.unified", false);
+user_pref("app.update.auto", false);
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("browser.startup.page", 1);
+user_pref("browser.startup.homepage", "about:home");
+FFPREFS
+chown -R "${PUID}:${PGID}" /config/.mozilla 2>/dev/null || true
+
+cat <<INFO
+============================================================
+ Railway KasmVNC Smooth Cloud Browser
+============================================================
+ Web port       : ${CUSTOM_PORT}
+ Username       : ${CUSTOM_USER}
+ Password       : ${PASSWORD}
+ Home folder    : /config
+ Desktop        : Openbox + tint2 + PCManFM desktop
+ Browser        : Firefox smooth profile
+ File manager   : PCManFM
+ Smooth mode    : ${SMOOTH_MODE}
+ Wallpaper file : ${WALLPAPER_FILE} (optional)
+============================================================
+Generate Railway public URL using the Web port shown above.
+============================================================
+INFO
+
+exec /init
