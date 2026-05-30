@@ -1,0 +1,12 @@
+#!/bin/sh
+# Use this if Chromium becomes corrupted or keeps crashing.
+set -eu
+pkill chromium-browser 2>/dev/null || true
+pkill chromium 2>/dev/null || true
+rm -rf /config/chromium-profile/Singleton* \
+       /config/chromium-profile/Crashpad \
+       /config/chromium-profile/ShaderCache \
+       /config/chromium-profile/Default/Cache \
+       /config/chromium-profile/Default/Code\ Cache \
+       /config/chromium-profile/Default/GPUCache 2>/dev/null || true
+echo "Browser reset complete. Start it again from the desktop menu."

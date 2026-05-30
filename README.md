@@ -1,445 +1,321 @@
-# Railway KasmVNC Smooth Cloud Browser
+# Railway KasmVNC Smooth Browser - Heavy Browsing Build
 
-A lightweight browser-based Linux desktop designed for Railway. It uses KasmVNC/Webtop, Openbox, Firefox, PCManFM, and a very small panel. The goal is smoothness over HD quality.
+A lightweight browser desktop for Railway using **KasmVNC + Openbox + Chromium + PCManFM**.
 
-This project is meant for light browsing, file work, and simple web tasks. It is not meant to behave like a powerful full VPS desktop.
+This version focuses on one thing: **make browsing survive better on weak Railway resources**. It is optimized for smoothness and stability over image quality.
 
----
+## What changed in this build
 
-## What is included
+- Uses **Chromium** instead of Firefox for better Facebook/YouTube compatibility.
+- Adds a special `cloud-browser` launcher with low-resource Chromium flags.
+- Limits Chromium renderer processes by default.
+- Disables GPU/compositor features that often crash in container desktops.
+- Uses small browser cache values to reduce memory pressure.
+- Cleans stale browser/session locks on Railway restart.
+- Keeps v2 fixes: right-click app menu, desktop shortcuts, PCManFM file manager, Downloads shortcut, terminal shortcut.
+- Keeps optional wallpaper support using only `root/defaults/assets/wallpaper.png`.
+- README now documents heavy browsing settings and safe usage.
 
-- KasmVNC web desktop
-- Openbox lightweight window manager
-- Firefox with low-overhead settings
-- PCManFM file manager
-- Downloads folder shortcut
-- Terminal shortcut
-- Right-click desktop app menu
-- Optional GitHub-controlled wallpaper
-- Railway-ready Docker setup
+## Important honesty
 
----
+This build gives the **best chance** for smoother browsing on Railway, but it cannot turn Railway into a powerful VPS. Facebook and YouTube are heavy. If Railway gives low CPU/RAM at that moment, those sites can still lag or crash.
+
+For maximum stability:
+
+- Use one KasmVNC browser tab only.
+- Use one to three Chromium tabs inside the desktop.
+- Use lower video quality on YouTube: 144p, 240p, or 360p.
+- Avoid opening multiple video/social sites together.
+- Avoid huge wallpapers.
+
+## Deploy on Railway
+
+1. Upload this project to GitHub.
+2. Create a Railway project from the GitHub repo.
+3. Let Railway build from the `Dockerfile`.
+4. Open the latest Deploy Logs.
+5. Find this line:
+
+```text
+Web port : 8080
+```
+
+6. Go to **Settings → Public Networking**.
+7. Generate the public domain using the port shown in logs, usually:
+
+```text
+8080
+```
 
 ## Default login
 
-```txt
+```text
 Username: admin
 Password: 123456
 ```
 
-You can change these using Railway Variables:
+## Recommended Railway Variables for heavy browsing
+
+Set these in **Railway → Service → Variables**:
 
 ```env
 CUSTOM_USER=admin
 PASSWORD=123456
-```
-
----
-
-## Railway deploy
-
-1. Upload this project to a GitHub repository.
-2. Open Railway.
-3. Create a new project from your GitHub repo.
-4. Railway will build from the `Dockerfile`.
-5. After deploy, open the Deploy Logs.
-6. Find the line that says:
-
-```txt
-Web port : 8080
-```
-
-7. Go to Railway → Service → Settings → Public Networking.
-8. Generate a domain using that exact port.
-
-Usually the correct port is:
-
-```txt
-8080
-```
-
-If the log shows another port, use the port shown in the log.
-
----
-
-## Railway Variables / ENV settings
-
-These variables are optional. The project already has safe defaults. You only need to add variables in Railway if you want to change the login, startup behavior, or smoothness settings.
-
-### Recommended smooth setup
-
-For the smoothest Railway experience, use these variables:
-
-```env
-CUSTOM_USER=admin
-PASSWORD=123456
-START_FIREFOX=true
+START_BROWSER=true
 SMOOTH_MODE=true
-VNC_RESOLUTION=1024x600
-VNC_DEPTH=16
-MAX_FPS=15
+BROWSER_RENDERERS=2
+BROWSER_SCALE=0.80
+BROWSER_WINDOW_SIZE=960,540
+BROWSER_CACHE_MB=64
+BROWSER_MEDIA_CACHE_MB=32
+BROWSER_HOME=https://www.google.com
 ```
 
-For slightly better quality, try this after confirming it runs smoothly:
+After changing variables, redeploy or restart the service.
+
+## Environment variables explained
+
+### Login
 
 ```env
-VNC_RESOLUTION=1280x720
-MAX_FPS=20
+CUSTOM_USER=admin
+PASSWORD=123456
 ```
 
-If it starts lagging, return to `1024x600` and `15 FPS`.
+Controls the KasmVNC login username and password.
 
-### What each variable does
+### Browser startup
 
-| Variable | Default | What it does | Recommended value |
-|---|---:|---|---|
-| `CUSTOM_USER` | `admin` | Login username for the KasmVNC web desktop. | `admin` |
-| `PASSWORD` | `123456` | Login password for the KasmVNC web desktop. Use at least 6 characters. | Change it if your URL is public. |
-| `TITLE` | `Railway KasmVNC Smooth Browser` | Browser page title shown by the KasmVNC web UI. | Any name you like. |
-| `PORT` | Set by Railway | Railway may inject this automatically. The startup script reads it. | Usually leave unset. |
-| `CUSTOM_PORT` | Uses `PORT`, fallback `8080` | Web port used by KasmVNC inside the container. Your Railway public networking port must match the deploy log. | `8080` if Railway log says 8080. |
-| `PUID` | `1000` | Linux user ID used by the container. Helps with file permissions in `/config`. | Leave default. |
-| `PGID` | `1000` | Linux group ID used by the container. Helps with file permissions in `/config`. | Leave default. |
-| `START_FIREFOX` | `true` | Opens Firefox automatically when the desktop starts. | `true` |
-| `SMOOTH_MODE` | `true` | Enables low-overhead Firefox and desktop settings. | `true` |
-| `VNC_RESOLUTION` | Base image default unless set | Controls desktop resolution. Lower resolution is smoother. | `1024x600` |
-| `VNC_DEPTH` | Base image default unless set | Controls color depth. Lower depth uses less bandwidth/CPU. | `16` |
-| `MAX_FPS` | Base image default unless set | Controls max frame rate. Lower FPS is less sharp but smoother on weak servers. | `15` |
-| `WALLPAPER_FILE` | `/defaults/assets/wallpaper.png` | Path checked for optional custom wallpaper. | Leave default. |
-| `MOZ_DISABLE_GPU` | `1` | Disables Firefox GPU acceleration to reduce glitches in containers. | `1` |
-| `MOZ_WEBRENDER` | `0` | Disables Firefox WebRender for lower overhead. | `0` |
-| `LIBGL_ALWAYS_SOFTWARE` | `1` | Forces software rendering instead of unstable container GPU rendering. | `1` |
-
-### Port rule
-
-Railway may provide `PORT` automatically. The deploy log prints the real web port, for example:
-
-```txt
-Web port : 8080
+```env
+START_BROWSER=true
 ```
 
-Use that exact number in Railway:
+- `true` = automatically open Chromium when the desktop starts.
+- `false` = desktop starts without browser, useful if you want lower startup memory.
 
-```txt
-Railway → Service → Settings → Public Networking → Generate Domain → Port 8080
+### Browser homepage
+
+```env
+BROWSER_HOME=https://www.google.com
 ```
 
-Do not guess the port. Always trust the deploy log.
+The page Chromium opens at startup. For maximum stability, keep it lightweight. Do not set YouTube or Facebook as the startup page.
 
----
+### Browser renderer limit
 
-## How to use the desktop
-
-### Open the file manager
-
-Right-click on the empty desktop area:
-
-```txt
-Applications → File Manager
+```env
+BROWSER_RENDERERS=2
 ```
 
-Or double-click the desktop shortcut:
+Controls how many renderer processes Chromium can use.
 
-```txt
-File Manager
+Recommended:
+
+```text
+1 = lowest memory, can feel slower
+2 = best balance
+3 = smoother with enough RAM, more crash risk
 ```
 
-### Downloads folder
+### Browser scale
 
-Firefox downloads go here:
-
-```txt
-/config/Downloads
+```env
+BROWSER_SCALE=0.80
 ```
 
-Open it from:
+Makes the browser render smaller internally. This reduces workload and can help smoothness.
 
-```txt
-Applications → Downloads
+Recommended values:
+
+```text
+0.75 = fastest, text smaller
+0.80 = best smoothness
+0.85 = balanced
+1.00 = normal quality, slower
 ```
 
-or the desktop `Downloads` shortcut.
+### Browser window size
 
-### Terminal
-
-Right-click desktop:
-
-```txt
-Applications → Terminal
+```env
+BROWSER_WINDOW_SIZE=960,540
 ```
 
----
+Lower window size means less work for the remote desktop and browser.
 
-## Optional wallpaper system
+Recommended:
 
-This version does **not** force a custom wallpaper by default.
+```text
+854,480  = fastest
+960,540  = good for YouTube/Facebook
+1024,600 = balanced
+1280,720 = better quality, more lag
+```
 
-If you do nothing, the desktop uses the normal lightweight default background.
+### Browser cache
 
-To use your own wallpaper, add this file in GitHub:
+```env
+BROWSER_CACHE_MB=64
+BROWSER_MEDIA_CACHE_MB=32
+```
 
-```txt
+Keeps cache small so Chromium does not eat too much disk/memory.
+
+Recommended:
+
+```text
+32/16 = lowest memory
+64/32 = balanced
+128/64 = better for repeated browsing, heavier
+```
+
+### Railway/KasmVNC port
+
+```env
+CUSTOM_PORT=8080
+```
+
+Usually you do not need to set this. Railway injects `PORT`, and the startup script maps it automatically.
+
+Always use the port shown in deploy logs for Railway Public Networking.
+
+## Optional wallpaper
+
+Wallpaper is optional and stays exactly PNG-only.
+
+To set wallpaper, add this file in GitHub:
+
+```text
 root/defaults/assets/wallpaper.png
 ```
 
 Then commit, push, and redeploy Railway.
 
-### Wallpaper rules
+### Wallpaper requirements
 
-Use this exact filename:
+Recommended:
 
-```txt
-wallpaper.png
+```text
+Format: PNG
+Name: wallpaper.png
+Path: root/defaults/assets/wallpaper.png
+Size: 1280x720 or 1024x600
+File size: under 500 KB if possible
 ```
 
-Use this exact path:
+For maximum browsing smoothness:
 
-```txt
-root/defaults/assets/wallpaper.png
+```text
+Use no wallpaper, or use a small/simple wallpaper.
+Avoid 4K wallpapers.
+Avoid huge PNG files.
+Avoid animated/background effects.
 ```
 
-Recommended size:
+If `wallpaper.png` is missing, the desktop uses the default lightweight background.
 
-```txt
-1280x720
+## How to use the desktop
+
+### Open browser
+
+Double-click **Browser** on the desktop, or right-click the desktop:
+
+```text
+Applications → Chromium Browser
 ```
 
-Also okay:
+### Open file manager
 
-```txt
-1024x600
-1366x768
-1920x1080
-```
+Double-click **File Manager**, or right-click the desktop:
 
-Best format:
-
-```txt
-PNG or JPG
-```
-
-Recommended file size:
-
-```txt
-Under 500 KB is best
-Under 1 MB is okay
-Avoid huge 4K images
-```
-
-For the smoothest Railway performance, use a simple compressed image. Avoid animated wallpapers, very high-resolution images, or large transparent PNG files.
-
-### How it works
-
-At startup, the script checks:
-
-```txt
-/defaults/assets/wallpaper.png
-```
-
-If that file exists, it copies it to:
-
-```txt
-/config/.railway-wallpaper.png
-```
-
-and applies it to the desktop.
-
-If that file does not exist, it uses the default plain background.
-
-The desktop wallpaper configuration is written during startup. If you change the wallpaper from inside the desktop GUI, that change is not the intended permanent method. The clean method is to change the GitHub file and redeploy.
-
----
-
-## Smoothness mode
-
-The project is tuned for smoothness instead of HD quality.
-
-The Firefox profile disables or reduces:
-
-- GPU/WebRender usage
-- browser animations
-- predictive networking
-- unnecessary telemetry
-- crash session restore overhead
-- heavy visual transitions
-
-This helps on Railway because shared CPU/RAM can be limited.
-
-### For smoother browsing
-
-Use fewer tabs. Avoid video-heavy pages. Keep the resolution low. Prefer mobile or lightweight versions of websites when possible.
-
-Recommended display target:
-
-```txt
-1024x600 or 1280x720
-Smoothness > quality
-```
-
----
-
-## About the noVNC error popup
-
-KasmVNC uses a browser client internally, and some internal messages may still say `noVNC`. That does not mean this is the old plain noVNC setup.
-
-This version reduces the chance of that popup by:
-
-- fixing desktop permission setup
-- avoiding broken startup scripts
-- avoiding duplicate desktop sessions
-- keeping the desktop lighter
-
-A browser-based VNC session can still show a temporary client error if the Railway container restarts, the phone browser kills the tab, or the network connection drops. If it happens, refresh the Railway URL.
-
----
-
-## Persistent storage
-
-Without a Railway Volume, files may disappear after redeploy/restart.
-
-For persistence, attach a Railway Volume to:
-
-```txt
-/config
-```
-
-That keeps:
-
-```txt
-/config/Downloads
-/config/Documents
-Firefox profile data
-Desktop files
-```
-
----
-
-## Project structure
-
-```txt
-Dockerfile
-railway.json
-.dockerignore
-README.md
-root/defaults/autostart
-root/defaults/assets/.gitkeep
-root/defaults/assets/wallpaper.png   optional, not included by default
-root/usr/local/bin/railway-start
-```
-
----
-
-## Future improvement documentation
-
-Possible future upgrades:
-
-### 1. Add resolution control
-
-Add variables such as:
-
-```env
-VNC_RESOLUTION=1024x600
-VNC_DEPTH=16
-```
-
-Only add this if the base image supports those variables correctly.
-
-### 2. Add a lightweight browser alternative
-
-Firefox is included because it is available and reliable. A future version could test a lighter browser if the package is stable in the base image.
-
-### 3. Add optional volume setup guide
-
-A future README section can include screenshots for Railway Volume mounting to `/config`.
-
-### 4. Add custom homepage
-
-Firefox homepage can be controlled through the generated `user.js` file inside:
-
-```txt
-/config/.mozilla/firefox/railway-profile/user.js
-```
-
-### 5. Add optional app shortcuts
-
-More desktop shortcuts can be created in:
-
-```txt
-root/defaults/autostart
-```
-
-Keep apps minimal. More apps means slower Railway performance.
-
----
-
-## Troubleshooting
-
-### 502 Bad Gateway
-
-Check Deploy Logs. If it says:
-
-```txt
-Web port : 8080
-```
-
-then Railway Public Networking must use port:
-
-```txt
-8080
-```
-
-### File manager not visible
-
-Right-click desktop:
-
-```txt
+```text
 Applications → File Manager
 ```
 
-or open terminal and run:
+Downloads are saved in:
 
-```bash
-pcmanfm /config &
+```text
+/config/Downloads
 ```
 
-### Desktop feels slow
+### Reset browser if it keeps crashing
 
-Close extra tabs. Avoid heavy pages. Restart Firefox from the right-click menu:
+Right-click desktop:
 
-```txt
-Applications → Close Firefox
+```text
+Applications → Reset Browser Cache
 ```
 
-Then open Firefox again.
+This removes stale cache/lock files and helps when Chromium gets stuck after a Railway restart.
 
-### Wallpaper not showing
+## YouTube/Facebook smoothness tips
 
-Check all of these:
+For YouTube:
 
-```txt
-Path: root/defaults/assets/wallpaper.png
-Filename: wallpaper.png
-File type: PNG or JPG
-Redeploy done after pushing
+```text
+Use 144p, 240p, or 360p.
+Do not use HD.
+Do not use fullscreen if it starts lagging.
+Close other tabs before video playback.
 ```
 
-If the file is missing, the default background is used.
+For Facebook:
 
----
-
-## Best use case
-
-This is best used as:
-
-```txt
-A lightweight cloud browser + file manager
+```text
+Use mobile Facebook if desktop Facebook is too heavy.
+Try: https://m.facebook.com
+Avoid opening many reels/videos together.
 ```
 
-Not as:
+For general browsing:
 
-```txt
-A full Windows-like cloud PC
-A gaming desktop
-A video streaming machine
-A heavy multitasking VPS
+```text
+Keep only 1 to 3 tabs open.
+Close the browser fully before long sessions.
+Restart Railway if memory gets exhausted.
+Use Browser Reset if Chromium gets corrupted.
 ```
+
+## About the noVNC/KasmVNC error popup
+
+KasmVNC uses a web client, and the error page may still mention noVNC internally. This build reduces the chance by:
+
+- Cleaning stale X/VNC/browser locks on start.
+- Starting only one browser window.
+- Using a lighter Chromium setup.
+- Avoiding heavy desktop environments.
+
+Still, no browser-based remote desktop can honestly guarantee the popup will never happen. It can appear if:
+
+```text
+Railway restarts or sleeps the container
+Network drops
+Multiple KasmVNC tabs are open
+Browser or desktop runs out of memory
+The web client glitches
+```
+
+If it appears, refresh the Railway URL. If it repeats, restart the Railway service.
+
+## Future improvement documentation
+
+Possible future improvements:
+
+1. Add a Railway Volume mounted to `/config` for persistent browser profile/downloads.
+2. Add a mobile-first browser launcher that opens `m.facebook.com` by default.
+3. Add separate profiles: `Normal`, `YouTube Low`, `Facebook Low`.
+4. Add a simple landing page before desktop with buttons for Browser, File Manager, and Reset.
+5. Add a healthcheck page so Railway can detect startup better.
+
+## Best realistic expectation
+
+This build is for:
+
+```text
+Light browsing: good
+Facebook: usable if tabs are controlled
+YouTube: usable at low quality if Railway resources are enough
+Heavy multitasking: not recommended
+HD streaming: not recommended
+```
+
+Smoothness is prioritized over visual quality.

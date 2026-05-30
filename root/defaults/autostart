@@ -1,11 +1,9 @@
 #!/bin/sh
 
-# Final lightweight desktop session for Railway.
-# Goal: smoothness > visual quality. Heavy browsing will still depend on Railway CPU/RAM.
+# Lightweight desktop session for Railway.
+# Goal: browsing survival > visual quality. YouTube/Facebook still depend on Railway CPU/RAM.
 
 export NO_AT_BRIDGE=1
-export MOZ_DISABLE_GPU=1
-export MOZ_WEBRENDER=0
 export GDK_BACKEND=x11
 export LIBGL_ALWAYS_SOFTWARE=1
 
@@ -20,15 +18,15 @@ mkdir -p \
   /config/Documents \
   /config/.config/openbox \
   /config/.config/pcmanfm/LXDE \
-  /config/.mozilla/firefox/railway-profile
+  /config/chromium-profile
 
 # Openbox right-click menu. This is the real app menu.
 cat > /config/.config/openbox/menu.xml <<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Applications">
-    <item label="Firefox">
-      <action name="Execute"><command>firefox --no-remote --profile /config/.mozilla/firefox/railway-profile</command></action>
+    <item label="Chromium Browser">
+      <action name="Execute"><command>cloud-browser</command></action>
     </item>
     <item label="File Manager">
       <action name="Execute"><command>pcmanfm /config</command></action>
@@ -40,8 +38,11 @@ cat > /config/.config/openbox/menu.xml <<'XML'
       <action name="Execute"><command>xterm</command></action>
     </item>
     <separator />
-    <item label="Close Firefox">
-      <action name="Execute"><command>pkill firefox</command></action>
+    <item label="Close Browser">
+      <action name="Execute"><command>pkill chromium-browser; pkill chromium</command></action>
+    </item>
+    <item label="Reset Browser Cache">
+      <action name="Execute"><command>xterm -e browser-reset</command></action>
     </item>
     <item label="Restart Desktop Panel">
       <action name="Execute"><command>pkill tint2; tint2</command></action>
@@ -58,6 +59,15 @@ XML
 openbox --reconfigure >/tmp/openbox-reconfigure.log 2>&1 || true
 
 # Desktop shortcuts.
+cat > /config/Desktop/Browser.desktop <<'DESK'
+[Desktop Entry]
+Type=Application
+Name=Browser
+Exec=cloud-browser
+Icon=chromium
+Terminal=false
+DESK
+
 cat > /config/Desktop/File-Manager.desktop <<'DESK'
 [Desktop Entry]
 Type=Application
@@ -84,25 +94,17 @@ Exec=xterm
 Icon=utilities-terminal
 Terminal=false
 DESK
-
-cat > /config/Desktop/Firefox.desktop <<'DESK'
-[Desktop Entry]
-Type=Application
-Name=Firefox
-Exec=firefox --no-remote --profile /config/.mozilla/firefox/railway-profile
-Icon=firefox
-Terminal=false
-DESK
 chmod +x /config/Desktop/*.desktop 2>/dev/null || true
 
 cat > /config/Desktop/README.txt <<'TXT' 2>/dev/null || true
 Railway KasmVNC Smooth Browser
 
 Use:
-- Right-click empty desktop -> Applications -> File Manager
-- Double-click File Manager or Downloads icon
-- Firefox downloads are in /config/Downloads
+- Right-click empty desktop -> Applications -> Browser / File Manager
+- Double-click Browser or File Manager icon
+- Downloads are in /config/Downloads
 - Optional wallpaper: add root/defaults/assets/wallpaper.png in GitHub and redeploy
+- If browser keeps crashing: right-click desktop -> Applications -> Reset Browser Cache
 TXT
 
 # Desktop icons + forced wallpaper. If the config is read-only, ignore write errors.
@@ -111,8 +113,10 @@ pcmanfm --desktop --profile LXDE >/tmp/pcmanfm.log 2>&1 &
 # Tiny panel.
 tint2 >/tmp/tint2.log 2>&1 &
 
-# Start exactly one Firefox window unless disabled.
-if [ "${START_FIREFOX:-true}" = "true" ]; then
+# Start exactly one browser window unless disabled.
+if [ "${START_BROWSER:-true}" = "true" ]; then
   sleep 2
-  pgrep -x firefox >/dev/null 2>&1 || firefox --no-remote --profile /config/.mozilla/firefox/railway-profile >/tmp/firefox.log 2>&1 &
+  if ! pgrep -f "chromium.*chromium-profile" >/dev/null 2>&1; then
+    cloud-browser >/tmp/cloud-browser.log 2>&1 &
+  fi
 fi

@@ -1,0 +1,73 @@
+#!/bin/sh
+set -eu
+
+PROFILE_DIR="${CHROMIUM_PROFILE:-/config/chromium-profile}"
+DOWNLOAD_DIR="${DOWNLOAD_DIR:-/config/Downloads}"
+mkdir -p "$PROFILE_DIR" "$DOWNLOAD_DIR" /config/.cache/chromium
+
+# Prefer the Alpine Chromium binary name; fall back just in case.
+if command -v chromium-browser >/dev/null 2>&1; then
+  CHROME_BIN="chromium-browser"
+elif command -v chromium >/dev/null 2>&1; then
+  CHROME_BIN="chromium"
+else
+  echo "Chromium not found" >&2
+  exit 1
+fi
+
+CACHE_BYTES=$(( ${BROWSER_CACHE_MB:-64} * 1024 * 1024 ))
+MEDIA_CACHE_BYTES=$(( ${BROWSER_MEDIA_CACHE_MB:-32} * 1024 * 1024 ))
+RENDERERS="${BROWSER_RENDERERS:-2}"
+SCALE="${BROWSER_SCALE:-0.85}"
+WIN_SIZE="${BROWSER_WINDOW_SIZE:-1000,560}"
+HOME_URL="${BROWSER_HOME:-https://www.google.com}"
+
+# Chromium high-survival mode:
+# - low process count
+# - no GPU/compositor dependency
+# - no /dev/shm pressure
+# - reduced background services
+# - small caches
+# This trades quality and features for fewer crashes on Railway.
+exec "$CHROME_BIN" \
+  --user-data-dir="$PROFILE_DIR" \
+  --no-sandbox \
+  --disable-setuid-sandbox \
+  --disable-dev-shm-usage \
+  --disable-gpu \
+  --disable-gpu-compositing \
+  --disable-accelerated-video-decode \
+  --disable-accelerated-2d-canvas \
+  --disable-software-rasterizer=false \
+  --enable-low-end-device-mode \
+  --process-per-site \
+  --renderer-process-limit="$RENDERERS" \
+  --js-flags="--max-old-space-size=256" \
+  --disable-background-networking \
+  --disable-background-timer-throttling=false \
+  --disable-breakpad \
+  --disable-client-side-phishing-detection \
+  --disable-component-update \
+  --disable-default-apps \
+  --disable-domain-reliability \
+  --disable-extensions \
+  --disable-features=TranslateUI,BackForwardCache,MediaRouter,OptimizationHints,InterestFeedContentSuggestions,AudioServiceOutOfProcess,CalculateNativeWinOcclusion \
+  --disable-hang-monitor \
+  --disable-ipc-flooding-protection \
+  --disable-notifications \
+  --disable-popup-blocking=false \
+  --disable-prompt-on-repost \
+  --disable-renderer-backgrounding=false \
+  --disable-sync \
+  --metrics-recording-only \
+  --mute-audio=false \
+  --no-first-run \
+  --no-default-browser-check \
+  --password-store=basic \
+  --use-mock-keychain \
+  --disk-cache-size="$CACHE_BYTES" \
+  --media-cache-size="$MEDIA_CACHE_BYTES" \
+  --force-device-scale-factor="$SCALE" \
+  --window-size="$WIN_SIZE" \
+  --start-maximized \
+  "$HOME_URL"
